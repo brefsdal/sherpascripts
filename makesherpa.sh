@@ -88,7 +88,7 @@ then
     SSE2=`cat /proc/cpuinfo | grep sse2`
     if [ "x" = "${SSE2}x" ]
     then
-	HAVE_SSE2=""
+        HAVE_SSE2=""
     fi
 fi
 
@@ -146,9 +146,10 @@ CIAO_FILE="$CIAO-src-core.tar.gz"
 CIAO_PATH="ftp://cxc.cfa.harvard.edu/pub/ciao4.4/all/${CIAO_FILE}"
 
 # Sherpa 4.4
-SHERPA="sherpa-4.4.0"
+SHERPA="sherpa-4.4.1"
 SHERPA_FILE="$SHERPA.tar.gz"
-SHERPA_PATH="http://cxc.cfa.harvard.edu/contrib/sherpa/${SHERPA_FILE}"
+#SHERPA_PATH="http://cxc.cfa.harvard.edu/contrib/sherpa/${SHERPA_FILE}"
+SHERPA_PATH="$REPO/${SHERPA_FILE}"
 
 # check for wget
 WGET="wget --tries 5 --no-clobber --progress=bar"
@@ -156,8 +157,8 @@ check_wget() {
     HAVE_WGET=`which wget`
     if [ "x" = "${HAVE_WGET}x" ]
     then
-	echo "ERROR: Sherpa installer needs 'wget', http://mirrors.kernel.org/gnu/wget/"
-	exit 1
+        echo "ERROR: Sherpa installer needs 'wget', http://mirrors.kernel.org/gnu/wget/"
+        exit 1
     fi
 }
 
@@ -197,7 +198,7 @@ build_wcs() {
 
     if [ ! -e $WCS_FILE ]
     then
-	$WGET $WCS_PATH
+        $WGET $WCS_PATH
     fi
     $TAR $WCS_FILE
  
@@ -213,7 +214,7 @@ build_cfitsio() {
 
     if [ ! -e $CFITSIO_FILE ]
     then
-	$WGET $CFITSIO_PATH
+        $WGET $CFITSIO_PATH
     fi
     $TAR $CFITSIO_FILE
     cd $CFITSIO
@@ -229,14 +230,14 @@ build_CCfits() {
 
     if [ ! -e $CCFITS_FILE ]
     then
-	$WGET $CCFITS_PATH
+        $WGET $CCFITS_PATH
     fi
     $TAR $CCFITS_FILE
     cd $CCFITS
     ./configure --disable-shared \
-	--with-cfitsio-include=$PREFIX/include \
-	--with-cfitsio-libdir=$PREFIX/lib \
-	--with-pic --prefix=$PREFIX
+        --with-cfitsio-include=$PREFIX/include \
+        --with-cfitsio-libdir=$PREFIX/lib \
+        --with-pic --prefix=$PREFIX
     make
     make install
     cd ..
@@ -247,7 +248,7 @@ build_fftw() {
 
     if [ ! -e $FFTW_FILE ] 
     then
-	$WGET $FFTW_PATH
+        $WGET $FFTW_PATH
     fi
     $TAR $FFTW_FILE
     cd $FFTW
@@ -263,12 +264,12 @@ build_ciao() {
 
     if [ ! -e $CIAO_FILE ]
     then
-	$WGET $CIAO_PATH
+        $WGET $CIAO_PATH
     fi
     $TAR $CIAO_FILE
     cd $CIAO
     ./configure --with-fits --with-ascii \
-	CC=$CC CXX=$CXX
+        CC=$CC CXX=$CXX
     cp -f ./config.h src/include
     cd src/lib/region
     make
@@ -282,12 +283,12 @@ build_ciao() {
     sed 's/#ifdef _POSIX_C_SOURCE/#if 0/g' < nutils/nan.c > nutils/nan.c--
     mv nutils/nan.c-- nutils/nan.c
     make \
-	WCS_INC=$PREFIX/include \
-	WCS_LIB=$PREFIX/lib \
-	INC_DIR=$PREFIX/$CIAO/include \
-	LIB_DIR=$PREFIX/$CIAO/lib \
-	CFITSIO_INC="-I$PREFIX/include" \
-	CFITSIO_LIB="-L$PREFIX/lib"
+        WCS_INC=$PREFIX/include \
+        WCS_LIB=$PREFIX/lib \
+        INC_DIR=$PREFIX/$CIAO/include \
+        LIB_DIR=$PREFIX/$CIAO/lib \
+        CFITSIO_INC="-I$PREFIX/include" \
+        CFITSIO_LIB="-L$PREFIX/lib"
     make install
     cd $PREFIX
     cp -f $CIAO/lib/libregion.a lib
@@ -351,7 +352,7 @@ build_xspec() {
 
     if [ ! -e $XSPEC_FILE ]
     then
-	$WGET $XSPEC_PATH
+        $WGET $XSPEC_PATH
     fi
     $TAR $XSPEC_FILE
 
@@ -375,6 +376,13 @@ build_xspec() {
 
     ###
 
+    # Download 64-bit Fortran compiler for Lion
+    # http://r.research.att.com/gfortran-lion-5666-3.pkg
+    if [ $ARCH = "Darwin" ]
+    then
+        export FC="`which gfortran-4.2`"
+    fi
+
     cd xspec-modelsonly/BUILD_DIR
     ./configure CC=$CC CXX=$CXX FC=$FC
 
@@ -387,7 +395,11 @@ build_xspec() {
     cp -f hmakerc hmakerc.bak
     sed 's/HD_LIB_STYLE="shared"/HD_LIB_STYLE="static"/g' < hmakerc > hmakerc1
     sed 's/HD_LIB_STYLE_F77="shared"/HD_LIB_STYLE_F77="static"/g' < hmakerc1 > hmakerc2
-    cp -f hmakerc2 hmakerc
+
+    sed 's/-m32/-m64/g' <hmakerc2 >hmakerc3
+    sed 's/-arch i386//g' <hmakerc3 >hmakerc4
+
+    cp -f hmakerc4 hmakerc
     cd ../../BUILD_DIR/
 
     ###
@@ -431,7 +443,7 @@ build_sherpa() {
 
     if [ ! -e $SHERPA_FILE ]
     then
-	$WGET $SHERPA_PATH
+        $WGET $SHERPA_PATH
     fi
     $TAR $SHERPA_FILE
 
@@ -440,27 +452,28 @@ build_sherpa() {
     ## SMD 01/27/12
     # update stand-alone Sherpa to be 1 minor version behind CIAO
     # 4.4.1 --> 4.4.0
-    #VERSION=`echo $SHERPA | awk '{print substr($1,8,12)}'`
-    #MAJOR=`echo $VERSION | awk '{print substr($1,1,3)}'`
-    #MINOR=`echo $VERSION | awk '{print substr($1,5,6)}'`
-    #NEWVERSION="$MAJOR.`expr $MINOR - "1"`"
+    VERSION=`echo $SHERPA | awk '{print substr($1,8,12)}'`
+    MAJOR=`echo $VERSION | awk '{print substr($1,1,3)}'`
+    MINOR=`echo $VERSION | awk '{print substr($1,5,6)}'`
+    NEWVERSION="$MAJOR.`expr $MINOR - "1"`"
 
-    #python fix_sherpa.py $SHERPA $VERSION $NEWVERSION
+    python fix_sherpa.py $SHERPA $VERSION $NEWVERSION
+    echo "Updating $SHERPA from $VERSION to $NEWVERSION"
     ##
     cd $SHERPA
     export F77=$FC
     export F90=$FC
     export F95=$FC
     python setup.py \
-	cfitsio_library_dir="../lib" \
-	xspec_library_dir="../lib" \
-	reg_library_dir="../lib" \
-	reg_include_dir="../include" \
-	fftw_library_dir="../lib" \
-	fftw_include_dir="../include" \
-	wcs_library_dir="../lib" \
-	wcs_include_dir="../include" \
-	install
+        cfitsio_library_dir="../lib" \
+        xspec_library_dir="../lib" \
+        reg_library_dir="../lib" \
+        reg_include_dir="../include" \
+        fftw_library_dir="../lib" \
+        fftw_include_dir="../include" \
+        wcs_library_dir="../lib" \
+        wcs_include_dir="../include" \
+        install
 
     cd $PREFIX
 }
@@ -479,7 +492,7 @@ do_wcs() {
 
     if [ ! -e lib/libwcs.a ]
     then
-	build_wcs
+        build_wcs
     fi
 }
 
@@ -487,7 +500,7 @@ do_cfitsio() {
 
     if [ ! -e lib/libcfitsio.a ]
     then
-	build_cfitsio
+        build_cfitsio
     fi
 }
 
@@ -495,7 +508,7 @@ do_CCfits() {
     
     if [ ! -e lib/libCCfits.a ]
     then
-	build_CCfits
+        build_CCfits
     fi
 }
 
@@ -503,7 +516,7 @@ do_fftw() {
 
     if [ ! -e lib/libfftw3.a ]
     then
-	build_fftw
+        build_fftw
     fi
 }
 
@@ -512,16 +525,16 @@ do_ciao() {
 
     if [ \( ! -e lib/libascdm.a \) -o \( ! -e lib/libregion.a \) -o \( ! -e ./group.so \) ]
     then
-	build_ciao
+        build_ciao
     fi
 }
 
 do_xspec() {
     
     if [ \( ! -e lib/libXS.a \) -o \( ! -e lib/libXSFunctions.a \) -o \
-	 \( ! -e lib/libXSUtil.a \) -o \( ! -e lib/libXSModel.a \) ]
+         \( ! -e lib/libXSUtil.a \) -o \( ! -e lib/libXSModel.a \) ]
     then
-	build_xspec
+        build_xspec
     fi
 }
 
